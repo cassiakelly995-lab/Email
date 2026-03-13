@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histórico de E-mails</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2ec;
+    --surface: #ffffff;
+    --border: #ddd8ce;
+    --border-light: #eee9e0;
+    --text: #1a1714;
+    --text-muted: #7a7268;
+    --text-faint: #b0a898;
+    --recebido: #1a5c3a;
+    --recebido-bg: #eef7f1;
+    --recebido-border: #a8d5b8;
+    --enviado: #1a3a5c;
+    --enviado-bg: #eef2f7;
+    --enviado-border: #a8bfd5;
+    --pendente: #7c4a00;
+    --pendente-bg: #fdf6ec;
+    --pendente-border: #f0c87a;
+    --gold: #b8860b;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--text);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .brand {
+    font-family: 'Playfair Display', serif;
+    color: #f5f2ec;
+    font-size: 20px;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-dot {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+  }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+
+  /* ── TABS ── */
+  .tabs-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+  }
+  .tab {
+    padding: 16px 28px;
+    border: none;
+    background: none;
+    font-family: 'Source Serif 4', serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--gold); }
+  .tab-count {
+    background: var(--border-light);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .tab.active .tab-count { background: #f0e8d0; color: var(--gold); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 20px 40px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+  }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 14px;
+  }
+  input[type=text], input[type=date], textarea, select {
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+  .search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--gold); }
+
+  .btn {
+    padding: 10px 22px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    font-size: 13px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: #f5f2ec;
+    letter-spacing: 0.5px;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── MAIN ── */
+  main { padding: 0 40px 60px; }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-faint);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty p { font-size: 15px; font-style: italic; }
+
+  /* ── EMAIL CARD ── */
+  .email-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .card-header {
+    padding: 18px 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: background 0.15s;
+  }
+  .card-header:hover { background: #faf8f4; }
+
+  .type-badge {
+    flex-shrink: 0;
+    width: 90px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .badge-recebido { background: var(--recebido-bg); color: var(--recebido); border: 1px solid var(--recebido-border); }
+  .badge-enviado  { background: var(--enviado-bg);  color: var(--enviado);  border: 1px solid var(--enviado-border); }
+  .badge-pendente { background: var(--pendente-bg); color: var(--pendente); border: 1px solid var(--pendente-border); }
+
+  .card-meta { flex: 1; min-width: 0; }
+  .card-subject {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-contact {
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-right {
+    flex-shrink: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .card-date {
+    font-size: 12px;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  .star-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-faint);
+    padding: 0;
+    transition: color 0.15s;
+  }
+  .star-btn.starred { color: var(--gold); }
+  .star-btn:hover { color: var(--gold); }
+
+  /* ── CARD BODY (expanded) ── */
+  .card-body {
+    display: none;
+    border-top: 1px solid var(--border-light);
+    padding: 20px 22px 22px;
+    background: #fdfcf9;
+  }
+  .card-body.open { display: block; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .info-label { color: var(--text-faint); text-align: right; }
+  .info-value { color: var(--text-muted); }
+
+  .card-notes {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 3px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    margin-bottom: 14px;
+  }
+
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag {
+    background: var(--border-light);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .card-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+  }
+  .btn-edit { background: #f0e8d0; color: var(--gold); }
+  .btn-edit:hover { background: #e8dbc0; }
+  .btn-done {
+    background: var(--recebido-bg);
+    color: var(--recebido);
+    border: 1px solid var(--recebido-border);
+  }
+  .btn-done:hover { background: #d8f0e4; }
+  .btn-del { background: #fdecea; color: #c0392b; }
+  .btn-del:hover { background: #f8d7d4; }
+
+  /* ── MODAL ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20,17,14,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 8px;
+    width: 540px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+
+  .modal-header {
+    padding: 24px 28px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--text);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-faint);
+    line-height: 1;
+    padding: 4px;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body { padding: 0 28px 28px; }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .field input[type=text],
+  .field input[type=date],
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus { border-color: var(--gold); background: var(--surface); }
+  .field textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-light);
+    margin-top: 8px;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--text);
+    color: #f5f2ec;
+    padding: 12px 22px;
+    border-radius: 5px;
+    font-size: 13px;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    border-left: 3px solid var(--gold);
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── STATS ── */
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 0 40px 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .stat { display: flex; align-items: center; gap: 6px; }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  @media (max-width: 600px) {
+    header, .tabs-bar, .toolbar, main, .stats-bar { padding-left: 16px; padding-right: 16px; }
+    .field-row { grid-template-columns: 1fr; }
+    .tab { padding: 14px 14px; font-size: 11px; }
+    .type-badge { width: 70px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-dot"></div>
+    HISTÓRICO DE E-MAILS
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openModal()">+ Registrar</button>
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <button class="tab active" onclick="setTab('todos')" id="tab-todos">
+    Todos <span class="tab-count" id="cnt-todos">0</span>
+  </button>
+  <button class="tab" onclick="setTab('recebido')" id="tab-recebido">
+    ↓ Recebidos <span class="tab-count" id="cnt-recebido">0</span>
+  </button>
+  <button class="tab" onclick="setTab('enviado')" id="tab-enviado">
+    ↑ Enviados <span class="tab-count" id="cnt-enviado">0</span>
+  </button>
+  <button class="tab" onclick="setTab('pendente')" id="tab-pendente">
+    ◷ A Enviar <span class="tab-count" id="cnt-pendente">0</span>
+  </button>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">&#9906;</span>
+    <input class="search-input" type="text" id="searchInput" placeholder="Pesquisar por assunto, contato ou conteúdo..." oninput="render()">
+  </div>
+  <button class="btn btn-ghost" onclick="exportCSV()">↓ Exportar CSV</button>
+  <label class="btn btn-ghost" style="cursor:pointer;" title="Restaurar backup CSV">↑ Importar CSV<input type="file" accept=".csv" id="importInput" style="display:none" onchange="importCSV(event)"></label>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<main id="listContainer"></main>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Registrar E-mail</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Tipo *</label>
+        <select id="fType">
+          <option value="recebido">↓ Recebido</option>
+          <option value="enviado">↑ Enviado</option>
+          <option value="pendente">◷ A Enviar (Pendente)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Assunto *</label>
+        <input type="text" id="fSubject" placeholder="Assunto do e-mail">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label id="contactLabel">De (Remetente)</label>
+          <input type="text" id="fContact" placeholder="nome@email.com">
+        </div>
+        <div class="field">
+          <label>Data *</label>
+          <input type="date" id="fDate">
+        </div>
+      </div>
+      <div class="field">
+        <label>Resumo / Anotações</label>
+        <textarea id="fNotes" placeholder="Descreva o conteúdo, decisões importantes, próximos passos..."></textarea>
+      </div>
+      <div class="field">
+        <label>Tags (separadas por vírgula)</label>
+        <input type="text" id="fTags" placeholder="contrato, urgente, reunião, proposta">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEmail()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORE_KEY = 'emailhistorico_v1';
+let emails = [];
+let editId = null;
+let activeTab = 'todos';
+let expanded = new Set();
+
+// ── PERSISTENCE ──
+function load() {
+  try { emails = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch(e) { emails = []; }
+}
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(emails));
+}
+
+// ── TAB ──
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  render();
+}
+
+// ── RENDER ──
+function render() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = emails;
+  if (activeTab !== 'todos') list = list.filter(e => e.type === activeTab);
+  if (q) list = list.filter(e =>
+    (e.subject||'').toLowerCase().includes(q) ||
+    (e.contact||'').toLowerCase().includes(q) ||
+    (e.notes||'').toLowerCase().includes(q) ||
+    (e.tags||'').toLowerCase().includes(q)
+  );
+  // Sort: starred first, then by date desc
+  list = [...list].sort((a,b) => {
+    if (a.starred && !b.starred) return -1;
+    if (!a.starred && b.starred) return 1;
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  const container = document.getElementById('listContainer');
+  if (list.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">✉</div><p>Nenhum e-mail ${activeTab !== 'todos' ? 'nesta categoria' : 'registrado ainda'}.</p></div>`;
+  } else {
+    container.innerHTML = list.map(e => cardHTML(e)).join('');
+  }
+
+  // Update counts
+  const types = ['recebido','enviado','pendente'];
+  document.getElementById('cnt-todos').textContent = emails.length;
+  types.forEach(t => {
+    document.getElementById('cnt-'+t).textContent = emails.filter(e=>e.type===t).length;
+  });
+
+  // Stats
+  const rec = emails.filter(e=>e.type==='recebido').length;
+  const env = emails.filter(e=>e.type==='enviado').length;
+  const pen = emails.filter(e=>e.type==='pendente').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><div class="stat-dot" style="background:#1a5c3a"></div>${rec} recebidos</div>
+    <div class="stat"><div class="stat-dot" style="background:#1a3a5c"></div>${env} enviados</div>
+    <div class="stat"><div class="stat-dot" style="background:#f0c87a"></div>${pen} a enviar</div>
+    <div class="stat" style="margin-left:auto;color:#b0a898">${emails.length} total</div>
+  `;
+}
+
+function cardHTML(e) {
+  const typeLabel = { recebido: 'Recebido', enviado: 'Enviado', pendente: 'A Enviar' }[e.type];
+  const contactLabel = { recebido: 'De', enviado: 'Para', pendente: 'Para' }[e.type];
+  const isOpen = expanded.has(e.id);
+  const tags = (e.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const dateFormatted = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+
+  return `
+  <div class="email-card" id="card-${e.id}">
+    <div class="card-header" onclick="toggleExpand('${e.id}')">
+      <span class="type-badge badge-${e.type}">${typeLabel}</span>
+      <div class="card-meta">
+        <div class="card-subject">${esc(e.subject||'(sem assunto)')}</div>
+        <div class="card-contact">${esc(e.contact ? contactLabel+': '+e.contact : '')}</div>
+      </div>
+      <div class="card-right">
+        <span class="card-date">${dateFormatted}</span>
+        <button class="star-btn ${e.starred?'starred':''}" onclick="event.stopPropagation();toggleStar('${e.id}')" title="Destacar">★</button>
+      </div>
+    </div>
+    <div class="card-body ${isOpen?'open':''}" id="body-${e.id}">
+      <div class="info-grid">
+        <span class="info-label">${contactLabel}</span>
+        <span class="info-value">${esc(e.contact||'—')}</span>
+        <span class="info-label">Data</span>
+        <span class="info-value">${dateFormatted}</span>
+      </div>
+      ${e.notes ? `<div class="card-notes">${esc(e.notes)}</div>` : ''}
+      ${tags.length ? `<div class="card-tags">${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="card-actions">
+        ${e.type==='pendente' ? `<button class="btn-sm btn-done" onclick="markSent('${e.id}')">✓ Marcar como Enviado</button>` : ''}
+        <button class="btn-sm btn-edit" onclick="openEdit('${e.id}')">Editar</button>
+        <button class="btn-sm btn-del" onclick="deleteEmail('${e.id}')">Excluir</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleExpand(id) {
+  if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+  const body = document.getElementById('body-'+id);
+  if (body) body.classList.toggle('open', expanded.has(id));
+}
+
+// ── STAR ──
+function toggleStar(id) {
+  const e = emails.find(x=>x.id===id);
+  if (e) { e.starred = !e.starred; save(); render(); }
+}
+
+// ── MARK SENT ──
+function markSent(id) {
+  const e = emails.find(x=>x.id===id);
+  if (e) {
+    e.type = 'enviado';
+    e.date = new Date().toISOString().slice(0,10);
+    save(); render();
+    showToast('Marcado como enviado ✓');
+  }
+}
+
+// ── DELETE ──
+function deleteEmail(id) {
+  if (!confirm('Excluir este e-mail do histórico?')) return;
+  emails = emails.filter(e=>e.id!==id);
+  expanded.delete(id);
+  save(); render();
+  showToast('E-mail removido');
+}
+
+// ── MODAL ──
+function openModal() {
+  editId = null;
+  document.getElementById('modalTitle').textContent = 'Registrar E-mail';
+  document.getElementById('fType').value = 'recebido';
+  document.getElementById('fSubject').value = '';
+  document.getElementById('fContact').value = '';
+  document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fNotes').value = '';
+  document.getElementById('fTags').value = '';
+  updateContactLabel();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('fSubject').focus();
+}
+
+function openEdit(id) {
+  const e = emails.find(x=>x.id===id);
+  if (!e) return;
+  editId = id;
+  document.getElementById('modalTitle').textContent = 'Editar E-mail';
+  document.getElementById('fType').value = e.type;
+  document.getElementById('fSubject').value = e.subject||'';
+  document.getElementById('fContact').value = e.contact||'';
+  document.getElementById('fDate').value = e.date||'';
+  document.getElementById('fNotes').value = e.notes||'';
+  document.getElementById('fTags').value = e.tags||'';
+  updateContactLabel();
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.getElementById('fType').addEventListener('change', updateContactLabel);
+function updateContactLabel() {
+  const t = document.getElementById('fType').value;
+  document.getElementById('contactLabel').textContent = t === 'recebido' ? 'De (Remetente)' : 'Para (Destinatário)';
+}
+
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── SAVE ──
+function saveEmail() {
+  const subject = document.getElementById('fSubject').value.trim();
+  if (!subject) { showToast('Informe o assunto', true); return; }
+
+  const data = {
+    type: document.getElementById('fType').value,
+    subject,
+    contact: document.getElementById('fContact').value.trim(),
+    date: document.getElementById('fDate').value,
+    notes: document.getElementById('fNotes').value.trim(),
+    tags: document.getElementById('fTags').value.trim(),
+  };
+
+  if (editId) {
+    const idx = emails.findIndex(e=>e.id===editId);
+    if (idx > -1) emails[idx] = { ...emails[idx], ...data };
+    showToast('E-mail atualizado ✓');
+  } else {
+    emails.unshift({ ...data, id: Date.now().toString(), starred: false, createdAt: new Date().toISOString() });
+    showToast('E-mail registrado ✓');
+  }
+  save(); closeModal(); render();
+}
+
+// ── EXPORT CSV ──
+function exportCSV() {
+  if (!emails.length) { showToast('Nenhum e-mail para exportar', true); return; }
+  const header = ['Tipo','Assunto','Contato','Data','Tags','Notas'];
+  const rows = emails.map(e => [e.type, e.subject, e.contact, e.date, e.tags, (e.notes||'').replace(/\n/g,' ')].map(v => `"${(v||'').replace(/"/g,'""')}"`));
+  const csv = [header, ...rows].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'historico-emails.csv';
+  a.click();
+  showToast('Exportado com sucesso');
+}
+
+// ── IMPORT CSV ──
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) { showToast('Arquivo vazio ou inválido', true); return; }
+      // Skip header line
+      const imported = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length < 4) continue;
+        const [tipo, assunto, contato, data, tags, notas] = cols;
+        const validTypes = ['recebido','enviado','pendente'];
+        const type = validTypes.includes(tipo) ? tipo : 'recebido';
+        if (!assunto) continue;
+        imported.push({
+          id: Date.now().toString() + '_' + i,
+          type,
+          subject: assunto,
+          contact: contato || '',
+          date: data || '',
+          tags: tags || '',
+          notes: notas || '',
+          starred: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+      if (!imported.length) { showToast('Nenhum dado válido encontrado', true); return; }
+      // Merge: avoid duplicates by subject+date
+      const existing = new Set(emails.map(e => e.subject + '|' + e.date));
+      const novos = imported.filter(e => !existing.has(e.subject + '|' + e.date));
+      emails = [...novos, ...emails];
+      save(); render();
+      showToast(`${novos.length} e-mail(s) importado(s) ✓`);
+    } catch(err) {
+      showToast('Erro ao ler o arquivo CSV', true);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderLeftColor = isError ? '#c0392b' : 'var(--gold)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter' && document.getElementById('overlay').classList.contains('open')) {
+    saveEmail();
+  }
+});
+
+// ── INIT ──
+load();
+render();
+</script>
+</body>
+</html>
